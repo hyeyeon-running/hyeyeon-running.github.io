@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>하반기 풀마라톤 고도 비교</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  body { font-family: 'Apple SD Gothic Neo','Noto Sans KR',sans-serif; background:#fff9f0; margin:0; padding:20px; }
+  h1 { font-size:20px; color:#5A3E28; margin-bottom:4px; }
+  p.sub { color:#a0845c; font-size:13px; margin-top:0; }
+  .chart-wrap { background:#fff; border-radius:16px; padding:16px; box-shadow:0 3px 16px rgba(90,62,40,0.08); }
+  .note { font-size:12px; color:#8b6914; margin-top:12px; line-height:1.6; }
+  .legend-extra { display:flex; gap:16px; margin-top:10px; font-size:12px; color:#5A3E28; flex-wrap:wrap;}
+  .legend-extra span { display:flex; align-items:center; gap:4px; }
+  .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+</style>
+</head>
+<body>
+<h1>🏔️ 2026 하반기 풀마라톤 고도 비교</h1>
+<p class="sub">경주 · 대청호 · 춘천 · 공주 · 안동 · JTBC서울 + 남산 순환로 실측 데이터</p>
+
+<div class="chart-wrap">
+  <canvas id="chart" height="110"></canvas>
+</div>
+
+<div class="note">
+※ 경주/춘천/JTBC는 공식·참고 그래프를 시각 판독하여 재구성한 근사치, 안동/공주/대청호는 원본 그래프 좌표 기준, 남산은 Garmin 실측 데이터입니다.<br>
+※ 63빌딩(274m, 안테나 포함) 기준선 표시. 롯데월드타워(554.5m)는 그래프 범위를 넘어가 점선 화살표로 별도 표기.
+</div>
+
+<script>
+const labels_km = [0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42.195];
+
+// 각 코스 데이터 (km, m) — 대화에서 정리된 판독값 기반
+const datasets = [
+  {
+    label: '안동마라톤 (766m 상승, 최고 238m)',
+    color: '#D32F2F',
+    data: [105,100,98,215,175,228,180,225,190,238,175,190,235,175,200,215,230,175,213,170,100,105]
+  },
+  {
+    label: '대청호마라톤',
+    color: '#1976D2',
+    data: [82,80,105,160,120,135,135,100,160,135,88,78,60,80,100,100,105,110,115,112,90,83]
+  },
+  {
+    label: '춘천마라톤',
+    color: '#7B1FA2',
+    data: [80,78,110,115,90,80,85,88,90,100,85,80,85,88,120,110,95,80,80,80,78,80]
+  },
+  {
+    label: '공주마라톤',
+    color: '#F57C00',
+    data: [35,45,10,15,18,30,32,28,10,45,25,25,58,30,28,30,10,58,20,10,20,35]
+  },
+  {
+    label: '경주마라톤',
+    color: '#388E3C',
+    data: [33,30,35,40,38,35,38,40,50,45,60,68,70,55,45,40,35,32,30,28,25,22]
+  },
+  {
+    label: 'JTBC 서울마라톤',
+    color: '#0097A7',
+    data: [35,35,35,35,45,35,55,75,72,100,80,55,60,65,80,65,75,50,60,35,32,30]
+  },
+];
+
+// 남산: 1회전(7km) 실측 데이터를 6회전(=42km, 풀코스와 동일 거리) 반복
+const namsan_lap_km = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,5.7,6.3,6.7,7];
+const namsan_lap_m  = [108,128,110,95,100,105,100,130,105,160,220,265,274,230,150,97];
+
+let namsan_km = [];
+let namsan_m = [];
+for (let lap = 0; lap < 6; lap++) {
+  namsan_lap_km.forEach((k, i) => {
+    // 마지막 바퀴의 마지막 점만 남기고, 나머지 바퀴는 마지막 점(중복 지점) 생략해서 이어붙임
+    if (lap > 0 && i === 0) return;
+    namsan_km.push(lap * 7 + k);
+    namsan_m.push(namsan_lap_m[i]);
+  });
+}
+
+const ctx = document.getElementById('chart').getContext('2d');
+new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: labels_km,
+    datasets: [
+      ...datasets.map(d => ({
+        label: d.label,
+        data: d.data,
+        borderColor: d.color,
+        backgroundColor: 'transparent',
+        borderWidth: 2.5,
+        pointRadius: 0,
+        tension: 0.35,
+      })),
+      {
+        label: '남산 6회전 (북측→남측순환로 ×6, 42km 환산)',
+        data: namsan_km.map((k,i) => ({x: k, y: namsan_m[i]})),
+        borderColor: '#5D4037',
+        borderDash: [6,4],
+        backgroundColor: 'transparent',
+        borderWidth: 3,
+        pointRadius: 0,
+        tension: 0.3,
+      },
+      {
+        label: '63빌딩 (274m)',
+        data: labels_km.map(k => ({x:k, y:274})),
+        borderColor: '#C4A882',
+        borderWidth: 1.5,
+        borderDash: [2,4],
+        pointRadius: 0,
+        fill: false,
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    interaction: { mode: 'nearest', intersect: false },
+    scales: {
+      x: { type:'linear', title: { display:true, text:'거리 (km)' }, min:0, max:42.195 },
+      y: { title: { display:true, text:'고도 (m)' }, min:0, max:300 }
+    },
+    plugins: {
+      legend: {
+        position:'bottom',
+        labels:{ boxWidth:14, font:{size:11} },
+        onClick: (e, legendItem, legend) => {
+          const chart = legend.chart;
+          const index = legendItem.datasetIndex;
+          // 기본 토글 동작
+          const meta = chart.getDatasetMeta(index);
+          meta.hidden = meta.hidden === null ? !chart.data.datasets[index].hidden : null;
+
+          // 현재 보이는 데이터셋들만 모아서 y축 범위 재계산
+          let allValues = [];
+          chart.data.datasets.forEach((ds, i) => {
+            const m = chart.getDatasetMeta(i);
+            if (!m.hidden) {
+              ds.data.forEach(p => allValues.push(typeof p === 'object' ? p.y : p));
+            }
+          });
+          if (allValues.length > 0) {
+            const maxVal = Math.max(...allValues);
+            const minVal = Math.min(...allValues);
+            // 위아래 여백 10% 정도
+            const padding = (maxVal - minVal) * 0.15 || 10;
+            chart.options.scales.y.max = Math.ceil((maxVal + padding) / 10) * 10;
+            chart.options.scales.y.min = Math.max(0, Math.floor((minVal - padding) / 10) * 10);
+          }
+          chart.update();
+        }
+      },
+      tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.parsed.y}m` } }
+    }
+  }
+});
+</script>
+
+<div class="note" style="margin-top:10px;">
+💡 아래 범례를 클릭해서 대회를 하나씩 켜고 꺼보세요 — 선택된 대회에 맞게 Y축(고도) 범위가 자동으로 재조정돼요.
+</div>
+
+
+<div class="legend-extra">
+  <span><span class="dot" style="background:#5D4037"></span>남산은 1회전(7km) 실측 데이터를 6회전 반복 = 42km (풀코스와 동일 거리 가정)</span>
+  <span>🗼 롯데월드타워 554.5m ≈ 남산 최고점(274m)의 2배 이상 — 화면 밖</span>
+</div>
+
+</body>
+</html>
